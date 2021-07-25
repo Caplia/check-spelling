@@ -384,6 +384,9 @@ handle_comment() {
 define_variables() {
   bucket=${INPUT_BUCKET:-$bucket}
   project=${INPUT_PROJECT:-$project}
+  if [ -n "$junit" ]; then
+    quit_without_error=1
+  fi
   if [ -z "$bucket" ] && [ -z "$project" ] && [ -n "$INPUT_CONFIG" ]; then
     bucket=${INPUT_CONFIG%/*}
     project=${INPUT_CONFIG##*/}
@@ -1113,7 +1116,7 @@ $B
 quit() {
   echo "::remove-matcher owner=check-spelling::"
   cat $output_variables
-  if [ -n "$junit" ]; then
+  if [ -n "$quit_without_error" ]; then
     exit
   fi
   exit $1
