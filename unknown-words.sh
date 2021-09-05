@@ -5,6 +5,7 @@
 # plus `fchurn` which uses `dn` mostly rolled together.
 set -e
 export spellchecker=${spellchecker:-${GITHUB_ACTION_PATH:-/app}}
+
 . "$spellchecker/common.sh"
 
 dispatcher() {
@@ -496,12 +497,6 @@ define_variables() {
   extra_dictionaries_json="$data_dir/suggested_dictionaries.json"
   output_variables=$(mktemp)
 
-  if [ -n "$GITHUB_TOKEN" ]; then
-    AUTHORIZATION_HEADER="Authorization: token $GITHUB_TOKEN"
-  else
-    AUTHORIZATION_HEADER='X-No-Authorization: Sorry About That'
-  fi
-
   report_header="# @check-spelling-bot Report"
   if [ -n "$INPUT_REPORT_TITLE_SUFFIX" ]; then
     report_header="$report_header $INPUT_REPORT_TITLE_SUFFIX"
@@ -790,7 +785,6 @@ set_up_reporter() {
     echo 'env:'
     env|sort
   fi
-  GITHUB_TOKEN=${GITHUB_TOKEN:-$INPUT_GITHUB_TOKEN}
   if [ -z "$GITHUB_EVENT_PATH" ] || [ ! -s "$GITHUB_EVENT_PATH" ]; then
     GITHUB_EVENT_PATH=/dev/null
   fi
@@ -1337,6 +1331,7 @@ post_commit_comment() {
   if [ -n "$OUTPUT" ]; then
     if to_boolean "$INPUT_POST_COMMENT"; then
       echo "Preparing a comment for $GITHUB_EVENT_NAME"
+      set -x
       set_comments_url "$GITHUB_EVENT_NAME" "$GITHUB_EVENT_PATH" "$GITHUB_SHA"
       if [ -n "$COMMENTS_URL" ] && [ -z "${COMMENTS_URL##*:*}" ]; then
         BODY=$(mktemp)
