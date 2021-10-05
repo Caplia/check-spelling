@@ -44,6 +44,7 @@ jobs:
         post_comment: 0
         experimental_path: introspected
         unknown_word_limit: 2
+        largest_file: 5000
 
     - name: store-comment
       if: failure() && steps.spelling.outputs.internal_state_directory
