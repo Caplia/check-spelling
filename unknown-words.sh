@@ -1229,7 +1229,7 @@ spelling_body() {
 }
 
 report_output_variables() {
-  tr : = < $output_variables
+  tr : = < $output_variables >&2
   cat $output_variables
 }
 
