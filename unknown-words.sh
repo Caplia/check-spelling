@@ -939,6 +939,7 @@ welcome() {
 
 run_spell_check() {
   echo "::set-output name=internal_state_directory::$data_dir" >> $output_variables
+  debug_output_variables
 
   begin_group 'Spell check files'
   file_list=$(mktemp)
@@ -992,6 +993,7 @@ run_spell_check() {
   rm "$more_warnings"
   cat "$warning_output"
   echo "::set-output name=warnings::$warning_output" >> $output_variables
+  debug_output_variables
   end_group
   if [ "$word_splitter_status" != '0 0' ]; then
     echo "$word_splitter failed ($word_splitter_status)"
@@ -1067,6 +1069,7 @@ remove_items() {
       remove_words=$data_dir/remove_words.txt
       echo "$patch_remove" > $remove_words
       echo "::set-output name=stale_words::$remove_words" >> $output_variables
+      debug_output_variables
     else
       rm "$fewer_misspellings_canary"
     fi
@@ -1168,6 +1171,7 @@ spelling_body() {
     if [ -s "$should_exclude_file" ]; then
       calculate_exclude_patterns
       echo "::set-output name=skipped_files::$should_exclude_file" >> $output_variables
+      debug_output_variables
       output_excludes="$(echo "
         <details><summary>Some files were automatically ignored</summary>
 
@@ -1228,12 +1232,15 @@ spelling_body() {
       " | perl -pne 's/^\s+$/\n/;'| uniq)
 }
 
-report_output_variables() {
+debug_output_variables() {
   (
     tr : = < $output_variables
     shasum $output_variables
     wc $output_variables
   ) >&2
+}
+report_output_variables() {
+  debug_output_variables
   cat $output_variables
 }
 
@@ -1617,6 +1624,7 @@ more_misspellings() {
     perl -pne 's/^.*?\[(\S+)\]\([^)]*\) \((\d+)\).* covers (\d+).*/{"$1":[$3, $2]}/' < "$extra_dictionaries_cover_entries" |
     jq -s '.' > $extra_dictionaries_json
     echo "::set-output name=suggested_dictionaries::$extra_dictionaries_json" >> $output_variables
+    debug_output_variables
   fi
 
   instructions=$(
@@ -1628,6 +1636,7 @@ more_misspellings() {
   begin_group "Unrecognized ($unknown_count)"
   echo "::set-output name=unknown_words::$tokens_file" >> $output_variables
   unrecognized_words_title="Unrecognized words ($unknown_count)"
+  debug_output_variables
   if [ "$unknown_count" -gt 10 ]; then
     unknown_word_body="<details><summary>$unrecognized_words_title</summary>
 
