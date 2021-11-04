@@ -35,6 +35,7 @@ rawfile
 README
 realpath
 regex
+shasum
 spellchecker
 ssh
 uname

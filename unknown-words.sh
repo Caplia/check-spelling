@@ -1229,7 +1229,11 @@ spelling_body() {
 }
 
 report_output_variables() {
-  tr : = < $output_variables >&2
+  (
+    tr : = < $output_variables
+    shasum $output_variables
+    wc $output_variables
+  ) >&2
   cat $output_variables
 }
 
