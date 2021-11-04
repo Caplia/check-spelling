@@ -457,6 +457,9 @@ handle_comment() {
 }
 
 define_variables() {
+  if [ -f "$early_warnings" ]; then
+    return
+  fi
   export early_warnings=$(mktemp)
   if [ -n "$INPUT_INTERNAL_STATE_DIRECTORY" ]; then
     data_dir="$INPUT_INTERNAL_STATE_DIRECTORY"
