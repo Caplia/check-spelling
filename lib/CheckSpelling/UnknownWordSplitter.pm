@@ -24,6 +24,8 @@ my %dictionary = ();
 my %unique;
 my %unique_unrecognized;
 my ($last_file, $words, $unrecognized) = ('', 0, 0);
+my @maybe_patterns;
+my $maybe_patterns_re;
 
 sub file_to_list {
   my ($re) = @_;
@@ -105,6 +107,12 @@ sub init {
   our ($word_match, %unique);
   our $patterns_re = file_to_re "$dirname/patterns.txt";
   our $forbidden_re = file_to_re "$dirname/forbidden.txt";
+  our @maybe_patterns = file_to_list "$dirname/extra_patterns.txt";
+  our $maybe_patterns_re = undef;
+  if (scalar @maybe_patterns) {
+    $maybe_patterns_re = list_to_re(@maybe_patterns);
+  }
+
   our $largest_file = CheckSpelling::Util::get_val_from_env('INPUT_LARGEST_FILE', 1024*1024);
 
   $word_match = valid_word();
@@ -116,7 +124,7 @@ sub init {
 
 sub split_file {
   my ($file) = @_;
-  our ($unrecognized, $longest_word, $shortest_word, $largest_file, $words, $word_match, %unique, %unique_unrecognized, $forbidden_re, $patterns_re, %dictionary);
+  our ($unrecognized, $longest_word, $shortest_word, $largest_file, $words, $word_match, %unique, %unique_unrecognized, $forbidden_re, $patterns_re, @maybe_patterns, $maybe_patterns_re, %dictionary);
   my $temp_dir = tempdir();
   open(NAME, '>:utf8', "$temp_dir/name");
     print NAME $file;
@@ -136,6 +144,7 @@ sub split_file {
   %unique = ();
   %unique_unrecognized = ();
   open(WARNINGS, '>:utf8', "$temp_dir/warnings");
+  my @maybe_hits = map { 0 } @maybe_patterns;
   while (<FILE>) {
     $_ = decode_utf8($_, FB_DEFAULT);
     next unless /./;
@@ -146,6 +155,13 @@ sub split_file {
     }
     # hook for custom line based text exclusions:
     s/$patterns_re/ /g;
+    if ($maybe_patterns_re) {
+      if (/$maybe_patterns_re/) {
+        for my $i (0..$#maybe_patterns) {
+          $maybe_hits[$i]++ if /$maybe_patterns[$i]/;
+        }
+      }
+    }
     # This is to make it easier to deal w/ rules:
     s/^/ /;
     while (s/([^\\])\\[rtn]/$1 /g) {}
@@ -208,6 +224,17 @@ sub split_file {
       print UNKNOWN join "\n", sort keys %unique_unrecognized;
     close UNKNOWN;
     close WARNINGS;
+  }
+  if (@maybe_hits) {
+    my $counted;
+    for my $i (@maybe_hits) {
+      $counted = 1, last if $i;
+    }
+    if ($counted) {
+      open(STATS, '>:utf8', "$temp_dir/extra_patterns");
+        print STATS (join ',', @maybe_hits)."\n";
+      close STATS;
+    }
   }
 
   return $temp_dir;

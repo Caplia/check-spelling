@@ -103,13 +103,16 @@ sub main {
   my $counter_summary = CheckSpelling::Util::get_file_from_env('counter_summary', '/dev/stderr');
   my $should_exclude_file = CheckSpelling::Util::get_file_from_env('should_exclude_file', '/dev/null');
   my $unknown_word_limit = CheckSpelling::Util::get_val_from_env('unknown_word_limit', undef);
+  my $pattern_totals = CheckSpelling::Util::get_file_from_env('pattern_totals', '/dev/null');
 
   open WARNING_OUTPUT, '>:utf8', $warning_output;
   open MORE_WARNINGS, '>:utf8', $more_warnings;
   open COUNTER_SUMMARY, '>:utf8', $counter_summary;
   open SHOULD_EXCLUDE, '>:utf8', $should_exclude_file;
+  open PATTERN_TOTALS, '>:utf8', $pattern_totals;
 
   my @delayed_warnings;
+  my @pattern_counts;
   %letter_map = ();
 
   for my $directory (<>) {
@@ -130,6 +133,15 @@ sub main {
     my $file=<NAME>;
     close NAME;
 
+    if (-e "$directory/extra_patterns") {
+      open EXTRA_PATTERNS, '<:utf8', "$directory/extra_patterns";
+      my $counts = <EXTRA_PATTERNS>;
+      close EXTRA_PATTERNS;
+      my @counts = split /,/, $counts;
+      for my $i (scalar @counts) {
+        $pattern_counts[$i] = ($pattern_counts[$i] || 0) + $counts[$i];
+      }
+    }
     if (-e "$directory/skipped") {
       open SKIPPED, '<:utf8', "$directory/skipped";
       my $reason=<SKIPPED>;
@@ -191,6 +203,9 @@ sub main {
     push @directories, $directory;
   }
   close SHOULD_EXCLUDE;
+
+  print PATTERN_TOTALS (join ',', @pattern_counts)."\n" if (@pattern_counts);
+  close PATTERN_TOTALS;
 
   if (defined $ENV{'expect'}) {
     $ENV{'expect'} =~ /(.*)/;

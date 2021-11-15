@@ -501,6 +501,7 @@ define_variables() {
   expect_path="$temp/expect.words.txt"
   excludelist_path="$temp/excludes.txt"
   patterns_path="$temp/patterns.txt"
+  extra_patterns_path="$temp/extra_patterns.txt"
   advice_path="$temp/advice.md"
   advice_path_txt="$temp/advice.txt"
   word_splitter="$spellchecker/spelling-unknown-word-splitter.pl"
@@ -833,6 +834,8 @@ set_up_files() {
   fi
   should_exclude_file=$data_dir/should_exclude.txt
   counter_summary_file=$data_dir/counter_summary.json
+  pattern_totals=$data_dir/pattern_totals.csv
+
   if [ -z "$INPUT_CUSTOM_TASK" ]; then
     get_project_files dictionary.words $dictionary_path
     get_project_files dictionary.txt $dictionary_path
@@ -915,6 +918,18 @@ set_up_files() {
   extra_dictionaries_cover_entries=$(mktemp)
   get_project_files line_masks.patterns $patterns_path
   get_project_files patterns.txt $patterns_path
+  curl -s 'https://raw.githubusercontent.com/wiki/check-spelling/check-spelling/Configuration-Examples:-patterns.md' |\
+    perl -ne '
+      unless (defined $examples) {
+        $examples = 1 if /^\`\`\`/;
+      } elsif ($examples == 1) {
+        if (/^\`\`\`/) {
+          $examples = 2;
+        } elsif (/^[^#]/ && /\S/) {
+          print;
+        }
+      }
+    ' > $extra_patterns_path
   if [ -s "$patterns_path" ]; then
     cp "$patterns_path" "$patterns"
   fi
@@ -1002,7 +1017,7 @@ run_spell_check() {
   more_warnings=$(mktemp)
   cat $file_list |\
   env -i SHELL="$SHELL" PATH="$PATH" LC_ALL="C" HOME="$HOME" xargs -0 -n$queue_size "-P$job_count" "$word_splitter" |\
-  expect="$expect_path" warning_output="$warning_output" more_warnings="$more_warnings" should_exclude_file="$should_exclude_file" counter_summary="$counter_summary_file" unknown_word_limit="$INPUT_UNKNOWN_WORD_LIMIT" "$word_collator" |\
+  expect="$expect_path" warning_output="$warning_output" more_warnings="$more_warnings" should_exclude_file="$should_exclude_file" counter_summary="$counter_summary_file" unknown_word_limit="$INPUT_UNKNOWN_WORD_LIMIT" pattern_totals="$pattern_totals" "$word_collator" |\
   perl -p -n -e 's/ \(.*//' > "$run_output"
   word_splitter_status="${PIPESTATUS[2]} ${PIPESTATUS[3]}"
   cat "$more_warnings" >> "$warning_output"
@@ -1210,6 +1225,22 @@ spelling_body() {
         To check these files, more of their words need to be in the dictionary than not. You can use `patterns.txt` to exclude portions, add items to the dictionary (e.g. by adding them to `allow.txt`), or fix typos.
         </details>
       ' | strip_lead)"
+    fi
+    if false && [ -s "$pattern_totals" ]; then
+      perl -e '
+        open TOTALS, "<:utf8", $ENV{pattern_totals};
+          my $totals=<TOTALS>;
+        close TOTALS;
+        chomp $totals;
+        my @totals=split /,|$/, $totals;
+        open PATTERNS, "<:utf8", $ENV{extra_patterns_path};
+          $/=undef;
+          my @patterns=split "\n", <PATTERNS>;
+        close PATTERNS;
+        for $i (0..$#totals) {
+          print "$totals[$i]: $patterns[$i]\n";
+        }
+      '|grep -v '^0:'|sort -nr
     fi
     if [ -s "$counter_summary_file" ]; then
       output_warnings="$(echo "
