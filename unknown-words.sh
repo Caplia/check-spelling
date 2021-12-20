@@ -114,9 +114,16 @@ dispatcher() {
 }
 
 comment_task() {
+  if to_boolean "$DEBUG"; then
+    set -x
+  fi
   define_variables
   set_up_tools
   set_up_files
+
+  if to_boolean "$DEBUG"; then
+    find "$data_dir"
+  fi
 
   if [ -n "$INPUT_INTERNAL_STATE_DIRECTORY" ]; then
     if [ -z "$NEW_TOKENS" ]; then
